@@ -101,9 +101,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
             controller: _qualify,
             keyboardType: TextInputType.number,
             decoration: const InputDecoration(
-              labelText: 'Nombre de finalistes (Tour 2)',
-              helperText: 'Les mieux notés du Tour 1 passent en finale.',
+              labelText: 'Qualifiés par région (Tour 2)',
+              helperText:
+                  'Le Tour 1 se joue région par région : dans chaque région, '
+                  'les mieux notés (à hauteur de ce nombre) représentent leur '
+                  'région en finale.',
             ),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Départage en cas d’égalité de notes : le candidat le plus jeune '
+            'l’emporte ; à égalité d’âge, celui qui a le moins d’expérience ; '
+            'à égalité encore, celui qui réside depuis le moins longtemps '
+            'dans sa région.',
+            style: TextStyle(color: AppColors.muted, fontSize: 13),
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,

@@ -58,7 +58,17 @@ class Candidate {
     required this.number,
     required this.firstName,
     required this.lastName,
-    this.city = '',
+    this.age,
+    this.birthPlace = '',
+    this.residence = '',
+    this.region = '',
+    this.residenceYears,
+    this.profession = '',
+    this.experienceYears,
+    this.hafizSince = '',
+    this.riwaayat = '',
+    this.daara = '',
+    this.contact = '',
     this.notes = '',
     this.qualified = false,
   });
@@ -67,7 +77,17 @@ class Candidate {
   String number;
   String firstName;
   String lastName;
-  String city;
+  int? age;
+  String birthPlace;
+  String residence;
+  String region;
+  int? residenceYears;
+  String profession;
+  int? experienceYears;
+  String hafizSince;
+  String riwaayat;
+  String daara;
+  String contact;
   String notes;
   bool qualified;
 
@@ -84,7 +104,17 @@ class Candidate {
         'number': number,
         'firstName': firstName,
         'lastName': lastName,
-        'city': city,
+        'age': age,
+        'birthPlace': birthPlace,
+        'residence': residence,
+        'region': region,
+        'residenceYears': residenceYears,
+        'profession': profession,
+        'experienceYears': experienceYears,
+        'hafizSince': hafizSince,
+        'riwaayat': riwaayat,
+        'daara': daara,
+        'contact': contact,
         'notes': notes,
         'qualified': qualified,
       };
@@ -94,10 +124,39 @@ class Candidate {
         number: json['number'] as String? ?? '',
         firstName: json['firstName'] as String? ?? '',
         lastName: json['lastName'] as String? ?? '',
-        city: json['city'] as String? ?? '',
+        age: (json['age'] as num?)?.toInt(),
+        birthPlace: json['birthPlace'] as String? ?? '',
+        residence: json['residence'] as String? ?? '',
+        region: json['region'] as String? ?? '',
+        residenceYears: (json['residenceYears'] as num?)?.toInt(),
+        profession: json['profession'] as String? ?? '',
+        experienceYears: (json['experienceYears'] as num?)?.toInt(),
+        hafizSince: json['hafizSince'] as String? ?? '',
+        riwaayat: json['riwaayat'] as String? ?? '',
+        daara: json['daara'] as String? ?? '',
+        contact: json['contact'] as String? ?? '',
         notes: json['notes'] as String? ?? '',
         qualified: json['qualified'] as bool? ?? false,
       );
+}
+
+/// Compares two candidates for tie-breaking when their scores are equal:
+/// youngest, then least experience, then least time resident in the region
+/// wins — per the contest's départage rules. Missing data always loses the
+/// tie-break to a candidate with data.
+int compareForTieBreak(Candidate a, Candidate b) {
+  final ageCmp = _compareNullableAsc(a.age, b.age);
+  if (ageCmp != 0) return ageCmp;
+  final expCmp = _compareNullableAsc(a.experienceYears, b.experienceYears);
+  if (expCmp != 0) return expCmp;
+  return _compareNullableAsc(a.residenceYears, b.residenceYears);
+}
+
+int _compareNullableAsc(int? a, int? b) {
+  if (a == null && b == null) return 0;
+  if (a == null) return 1;
+  if (b == null) return -1;
+  return a.compareTo(b);
 }
 
 class ScoreEntry {

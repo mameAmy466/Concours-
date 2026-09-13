@@ -33,7 +33,9 @@ class _CandidatesScreenState extends State<CandidatesScreen> {
       return q.isEmpty ||
           c.fullName.toLowerCase().contains(q) ||
           c.number.toLowerCase().contains(q) ||
-          c.city.toLowerCase().contains(q);
+          c.residence.toLowerCase().contains(q) ||
+          c.region.toLowerCase().contains(q) ||
+          c.daara.toLowerCase().contains(q);
     }).toList()
       ..sort((a, b) => a.number.compareTo(b.number));
 

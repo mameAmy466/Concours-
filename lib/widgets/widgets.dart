@@ -261,7 +261,8 @@ class CandidateTile extends StatelessWidget {
         ),
         subtitle: Text(
           [
-            if (candidate.city.isNotEmpty) candidate.city,
+            if (candidate.residence.isNotEmpty) candidate.residence,
+            if (candidate.region.isNotEmpty) candidate.region,
             if (subtitle != null) subtitle,
           ].join(' · '),
           style: const TextStyle(color: AppColors.muted, fontSize: 13),
@@ -365,7 +366,7 @@ class _ScorePanelState extends State<ScorePanel> {
                       ),
                     ),
                     Text(
-                      'Tour ${widget.round}${widget.candidate.city.isNotEmpty ? ' · ${widget.candidate.city}' : ''}',
+                      'Tour ${widget.round}${widget.candidate.residence.isNotEmpty ? ' · ${widget.candidate.residence}' : ''}',
                       style: outfit(
                         color: AppColors.goldSoft,
                         fontSize: 13,

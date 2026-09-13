@@ -39,6 +39,30 @@ def connect() -> Iterator[sqlite3.Connection]:
         conn.close()
 
 
+_CANDIDATE_COLUMNS = [
+    ("age", "INTEGER"),
+    ("birth_place", "TEXT NOT NULL DEFAULT ''"),
+    ("residence", "TEXT NOT NULL DEFAULT ''"),
+    ("region", "TEXT NOT NULL DEFAULT ''"),
+    ("residence_years", "INTEGER"),
+    ("profession", "TEXT NOT NULL DEFAULT ''"),
+    ("experience_years", "INTEGER"),
+    ("hafiz_since", "TEXT NOT NULL DEFAULT ''"),
+    ("riwaayat", "TEXT NOT NULL DEFAULT ''"),
+    ("daara", "TEXT NOT NULL DEFAULT ''"),
+    ("contact", "TEXT NOT NULL DEFAULT ''"),
+]
+
+
+def _migrate_candidate_columns(conn: sqlite3.Connection) -> None:
+    existing = {
+        row["name"] for row in conn.execute("PRAGMA table_info(candidates)").fetchall()
+    }
+    for name, definition in _CANDIDATE_COLUMNS:
+        if name not in existing:
+            conn.execute(f"ALTER TABLE candidates ADD COLUMN {name} {definition}")
+
+
 def init_db() -> None:
     with connect() as conn:
         conn.executescript(
@@ -68,7 +92,17 @@ def init_db() -> None:
                 number TEXT NOT NULL,
                 first_name TEXT NOT NULL,
                 last_name TEXT NOT NULL,
-                city TEXT NOT NULL DEFAULT '',
+                age INTEGER,
+                birth_place TEXT NOT NULL DEFAULT '',
+                residence TEXT NOT NULL DEFAULT '',
+                region TEXT NOT NULL DEFAULT '',
+                residence_years INTEGER,
+                profession TEXT NOT NULL DEFAULT '',
+                experience_years INTEGER,
+                hafiz_since TEXT NOT NULL DEFAULT '',
+                riwaayat TEXT NOT NULL DEFAULT '',
+                daara TEXT NOT NULL DEFAULT '',
+                contact TEXT NOT NULL DEFAULT '',
                 notes TEXT NOT NULL DEFAULT '',
                 qualified INTEGER NOT NULL DEFAULT 0,
                 FOREIGN KEY (contest_id) REFERENCES contest(id) ON DELETE CASCADE
@@ -86,6 +120,7 @@ def init_db() -> None:
             );
             """
         )
+        _migrate_candidate_columns(conn)
         row = conn.execute(
             "SELECT id FROM contest WHERE id = ?",
             (DEFAULT_CONTEST_ID,),

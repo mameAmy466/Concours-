@@ -28,7 +28,17 @@ class CandidateIn(CamelModel):
     number: str
     first_name: str
     last_name: str
-    city: str = ""
+    age: int | None = None
+    birth_place: str = ""
+    residence: str = ""
+    region: str = ""
+    residence_years: int | None = None
+    profession: str = ""
+    experience_years: int | None = None
+    hafiz_since: str = ""
+    riwaayat: str = ""
+    daara: str = ""
+    contact: str = ""
     notes: str = ""
     qualified: bool = False
 
@@ -38,7 +48,17 @@ class CandidateOut(CamelModel):
     number: str
     first_name: str
     last_name: str
-    city: str = ""
+    age: int | None = None
+    birth_place: str = ""
+    residence: str = ""
+    region: str = ""
+    residence_years: int | None = None
+    profession: str = ""
+    experience_years: int | None = None
+    hafiz_since: str = ""
+    riwaayat: str = ""
+    daara: str = ""
+    contact: str = ""
     notes: str = ""
     qualified: bool = False
 

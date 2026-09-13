@@ -176,6 +176,8 @@ class ContestController extends ChangeNotifier {
       if (scoredA != scoredB) return scoredA ? -1 : 1;
       final cmp = totalOf(b.id, round).compareTo(totalOf(a.id, round));
       if (cmp != 0) return cmp;
+      final tie = compareForTieBreak(a, b);
+      if (tie != 0) return tie;
       return a.number.compareTo(b.number);
     });
     return [
@@ -203,7 +205,11 @@ class ContestController extends ChangeNotifier {
     list.sort((a, b) {
       final cmp = finalTotalOf(b).compareTo(finalTotalOf(a));
       if (cmp != 0) return cmp;
-      return totalOf(b.id, 2).compareTo(totalOf(a.id, 2));
+      final roundCmp = totalOf(b.id, 2).compareTo(totalOf(a.id, 2));
+      if (roundCmp != 0) return roundCmp;
+      final tie = compareForTieBreak(a, b);
+      if (tie != 0) return tie;
+      return a.number.compareTo(b.number);
     });
     return [
       for (var i = 0; i < list.length; i++)
@@ -329,10 +335,25 @@ class ContestController extends ChangeNotifier {
     if (scoredCount(1) < candidates.length) {
       return 'Tous les candidats doivent être notés avant de clôturer le Tour 1.';
     }
-    final ranked = rankingFor(1);
-    final n = qualifyCount.clamp(1, ranked.length);
-    for (var i = 0; i < ranked.length; i++) {
-      ranked[i].candidate.qualified = i < n;
+    // Qualification se fait région par région : dans chaque région, les
+    // `qualifyCount` premiers (à égalité de note, priorité au départage)
+    // représentent leur région au Tour 2.
+    final byRegion = <String, List<Candidate>>{};
+    for (final c in candidates) {
+      byRegion.putIfAbsent(c.region, () => []).add(c);
+    }
+    for (final group in byRegion.values) {
+      group.sort((a, b) {
+        final cmp = totalOf(b.id, 1).compareTo(totalOf(a.id, 1));
+        if (cmp != 0) return cmp;
+        final tie = compareForTieBreak(a, b);
+        if (tie != 0) return tie;
+        return a.number.compareTo(b.number);
+      });
+      final n = qualifyCount.clamp(1, group.length);
+      for (var i = 0; i < group.length; i++) {
+        group[i].qualified = i < n;
+      }
     }
     phase = ContestPhase.round1Done;
     await _persist();
