@@ -28,7 +28,17 @@ def _candidate_out(row) -> CandidateOut:
         number=row["number"],
         first_name=row["first_name"],
         last_name=row["last_name"],
-        city=row["city"],
+        age=row["age"],
+        birth_place=row["birth_place"],
+        residence=row["residence"],
+        region=row["region"],
+        residence_years=row["residence_years"],
+        profession=row["profession"],
+        experience_years=row["experience_years"],
+        hafiz_since=row["hafiz_since"],
+        riwaayat=row["riwaayat"],
+        daara=row["daara"],
+        contact=row["contact"],
         notes=row["notes"],
         qualified=bool(row["qualified"]),
     )
@@ -194,14 +204,27 @@ def upsert_candidate(
             conn.execute(
                 """
                 UPDATE candidates
-                SET number = ?, first_name = ?, last_name = ?, city = ?, notes = ?, qualified = ?
+                SET number = ?, first_name = ?, last_name = ?, age = ?,
+                    birth_place = ?, residence = ?, region = ?, residence_years = ?,
+                    profession = ?, experience_years = ?, hafiz_since = ?,
+                    riwaayat = ?, daara = ?, contact = ?, notes = ?, qualified = ?
                 WHERE id = ? AND contest_id = ?
                 """,
                 (
                     payload.number.strip(),
                     payload.first_name.strip(),
                     payload.last_name.strip(),
-                    payload.city.strip(),
+                    payload.age,
+                    payload.birth_place.strip(),
+                    payload.residence.strip(),
+                    payload.region.strip(),
+                    payload.residence_years,
+                    payload.profession.strip(),
+                    payload.experience_years,
+                    payload.hafiz_since.strip(),
+                    payload.riwaayat.strip(),
+                    payload.daara.strip(),
+                    payload.contact.strip(),
                     payload.notes.strip(),
                     1 if payload.qualified else 0,
                     candidate_id,
@@ -212,8 +235,10 @@ def upsert_candidate(
             conn.execute(
                 """
                 INSERT INTO candidates
-                (id, contest_id, number, first_name, last_name, city, notes, qualified)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                (id, contest_id, number, first_name, last_name, age, birth_place,
+                 residence, region, residence_years, profession, experience_years,
+                 hafiz_since, riwaayat, daara, contact, notes, qualified)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     candidate_id,
@@ -221,7 +246,17 @@ def upsert_candidate(
                     payload.number.strip(),
                     payload.first_name.strip(),
                     payload.last_name.strip(),
-                    payload.city.strip(),
+                    payload.age,
+                    payload.birth_place.strip(),
+                    payload.residence.strip(),
+                    payload.region.strip(),
+                    payload.residence_years,
+                    payload.profession.strip(),
+                    payload.experience_years,
+                    payload.hafiz_since.strip(),
+                    payload.riwaayat.strip(),
+                    payload.daara.strip(),
+                    payload.contact.strip(),
                     payload.notes.strip(),
                     1 if payload.qualified else 0,
                 ),
@@ -280,6 +315,18 @@ def save_score(
     return get_snapshot(contest_id)
 
 
+def _tie_break_key(candidate: CandidateOut) -> tuple:
+    """Youngest, then least experience, then least time resident in the
+    region wins a tie on score — per the contest's départage rules. Missing
+    data always loses the tie-break to a candidate with data, so map None to
+    the end of the ordering."""
+    return (
+        (1, 0) if candidate.age is None else (0, candidate.age),
+        (1, 0) if candidate.experience_years is None else (0, candidate.experience_years),
+        (1, 0) if candidate.residence_years is None else (0, candidate.residence_years),
+    )
+
+
 def _set_phase(conn, contest_id: str, phase: str) -> None:
     conn.execute(
         "UPDATE contest SET phase = ?, updated_at = ? WHERE id = ?",
@@ -307,16 +354,36 @@ def close_round_1(contest_id: str = DEFAULT_CONTEST_ID) -> ContestSnapshot:
         raise ContestError(
             "Tous les candidats doivent être notés avant de clôturer le Tour 1."
         )
-    qualify = max(1, min(snapshot.qualify_count, len(ranking)))
+
+    # Qualification se fait région par région : dans chaque région, les
+    # `qualify_count` premiers (à égalité de note, priorité au départage)
+    # représentent leur région au Tour 2.
+    scores = _score_map(snapshot)
+    by_region: dict[str, list[CandidateOut]] = defaultdict(list)
+    for candidate in snapshot.candidates:
+        by_region[candidate.region].append(candidate)
+
+    qualified_ids: set[str] = set()
+    for group in by_region.values():
+        group.sort(
+            key=lambda c: (
+                -_total(scores.get((c.id, 1)), snapshot),
+                _tie_break_key(c),
+                c.number,
+            )
+        )
+        qualify = max(1, min(snapshot.qualify_count, len(group)))
+        qualified_ids.update(c.id for c in group[:qualify])
+
     with connect() as conn:
         conn.execute(
             "UPDATE candidates SET qualified = 0 WHERE contest_id = ?",
             (contest_id,),
         )
-        for row in ranking[:qualify]:
+        for candidate_id in qualified_ids:
             conn.execute(
                 "UPDATE candidates SET qualified = 1 WHERE id = ? AND contest_id = ?",
-                (row.candidate.id, contest_id),
+                (candidate_id, contest_id),
             )
         _set_phase(conn, contest_id, "round1Done")
     return get_snapshot(contest_id)
@@ -407,7 +474,12 @@ def ranking_for(round_number: int, snapshot: ContestSnapshot | None = None) -> l
         values = scores.get((candidate.id, round_number))
         complete = _is_complete(values, snapshot)
         total = _total(values, snapshot)
-        return (0 if complete else 1, -total, candidate.number)
+        return (
+            0 if complete else 1,
+            -total,
+            _tie_break_key(candidate),
+            candidate.number,
+        )
 
     candidates.sort(key=sort_key)
     max_total = _max_round_total(snapshot)
@@ -442,6 +514,7 @@ def final_ranking(snapshot: ContestSnapshot | None = None) -> list[RankedRowOut]
         key=lambda c: (
             -final_total(c),
             -_total(scores.get((c.id, 2)), snapshot),
+            _tie_break_key(c),
             c.number,
         )
     )
